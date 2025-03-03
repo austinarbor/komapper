@@ -22,6 +22,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -164,6 +165,24 @@ class KomapperR2dbcAutoConfigurationTest {
             }
     }
 
+    @Test
+    fun customClock() {
+        contextRunner.withUserConfiguration(CustomClockConfigure::class.java)
+            .run { context ->
+                assertThat(context)
+                    .hasNotFailed()
+                    .hasSingleBean(Clock::class.java)
+                    .hasSingleBean(ClockProvider::class.java)
+
+                val clock = context.getBean(Clock::class.java)
+                assertThat(clock.instant()).isEqualTo(INSTANT_FOR_CLOCK)
+
+                val clockProvider = context.getBean(ClockProvider::class.java)
+                val now = clockProvider.now()
+                assertThat(now.instant()).isEqualTo(INSTANT_FOR_CLOCK)
+            }
+    }
+
     @Suppress("unused")
     @Configuration
     open class CustomConfigure {
@@ -223,6 +242,12 @@ class KomapperR2dbcAutoConfigurationTest {
         override fun clearCache() = Unit
     }
 
+    @Configuration
+    open class CustomClockConfigure {
+        @Bean
+        open fun customClock(): Clock = Clock.fixed(INSTANT_FOR_CLOCK, ZONE_FOR_CLOCK)
+    }
+
     private class CustomR2dbcDataType : AbstractR2dbcDataType<LongRange>(typeOf<LongRange>()) {
         override val name = "custom"
     }
@@ -269,5 +294,11 @@ class KomapperR2dbcAutoConfigurationTest {
 
     private class CustomR2dbcUserDefinedDataTypeLongRange : AbstractR2dbcUserDefinedDataType<LongRange>() {
         override val type = typeOf<LongRange>()
+    }
+
+    companion object {
+        // March 3, 2025, at 01:02:03 UTC
+        private val INSTANT_FOR_CLOCK = Instant.ofEpochSecond(1740963723L)
+        private val ZONE_FOR_CLOCK = ZoneId.of("Etc/UTC")
     }
 }

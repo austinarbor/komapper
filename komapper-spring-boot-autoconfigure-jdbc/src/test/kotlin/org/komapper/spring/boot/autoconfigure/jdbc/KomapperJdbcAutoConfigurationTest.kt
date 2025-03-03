@@ -25,6 +25,7 @@ import java.sql.JDBCType
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -170,6 +171,24 @@ class KomapperJdbcAutoConfigurationTest {
             }
     }
 
+    @Test
+    fun customClock() {
+        contextRunner.withUserConfiguration(CustomClockConfigure::class.java)
+            .run { context ->
+                assertThat(context)
+                    .hasNotFailed()
+                    .hasSingleBean(Clock::class.java)
+                    .hasSingleBean(ClockProvider::class.java)
+
+                val clock = context.getBean(Clock::class.java)
+                assertThat(clock.instant()).isEqualTo(INSTANT_FOR_CLOCK)
+
+                val clockProvider = context.getBean(ClockProvider::class.java)
+                val now = clockProvider.now()
+                assertThat(now.instant()).isEqualTo(INSTANT_FOR_CLOCK)
+            }
+    }
+
     @Suppress("unused", "UNCHECKED_CAST")
     @Configuration
     open class CustomConfigure {
@@ -227,6 +246,12 @@ class KomapperJdbcAutoConfigurationTest {
 
         @Bean
         open fun customJdbcUserDefinedDataType(): JdbcUserDefinedDataType<LongRange> = CustomJdbcUserDefinedDataTypeLongRange()
+    }
+
+    @Configuration
+    open class CustomClockConfigure {
+        @Bean
+        open fun customClock(): Clock = Clock.fixed(INSTANT_FOR_CLOCK, ZONE_FOR_CLOCK)
     }
 
     class MyStatementBuilder : TemplateStatementBuilder {
@@ -291,5 +316,11 @@ class KomapperJdbcAutoConfigurationTest {
 
     private class CustomJdbcUserDefinedDataTypeLongRange : AbstractJdbcUserDefinedDataType<LongRange>() {
         override val type = typeOf<LongRange>()
+    }
+
+    companion object {
+        // March 3, 2025, at 01:02:03 UTC
+        private val INSTANT_FOR_CLOCK = Instant.ofEpochSecond(1740963723L)
+        private val ZONE_FOR_CLOCK = ZoneId.of("Etc/UTC")
     }
 }

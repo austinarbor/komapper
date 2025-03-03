@@ -41,6 +41,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Conditional
 import org.springframework.core.env.Environment
 import org.springframework.transaction.PlatformTransactionManager
+import java.time.Clock
 import java.util.Optional
 import java.util.UUID
 import javax.sql.DataSource
@@ -67,8 +68,9 @@ open class KomapperJdbcAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    open fun komapperClockProvider(): ClockProvider {
-        return DefaultClockProvider()
+    open fun komapperClockProvider(clocks: ObjectProvider<Clock>): ClockProvider {
+        val clock = clocks.firstOrNull() ?: Clock.systemDefaultZone()
+        return DefaultClockProvider(clock)
     }
 
     @Bean
